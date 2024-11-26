@@ -16,7 +16,7 @@ jobs:
   validate:
     name: Validate Terraform
     runs-on: self-hosted
-    labels: [eks_selfhost]
+    labels: [self-hosted]
     container:
       image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
       options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -36,7 +36,7 @@ jobs:
   plan:
     name: Plan Terraform
     runs-on: self-hosted
-    labels: [eks_selfhost]
+    labels: [self-hosted]
     container:
       image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
       options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -57,7 +57,7 @@ jobs:
   apply:
     name: Apply Terraform
     runs-on: self-hosted
-    labels: [eks_selfhost]
+    labels: [self-hosted]
     container:
       image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
       options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -75,7 +75,7 @@ jobs:
   destroy:
     name: Destroy Terraform
     runs-on: self-hosted
-    labels: [eks_selfhost]
+    labels: [self-hosted]
     container:
       image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
       options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
