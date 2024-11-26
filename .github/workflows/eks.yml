@@ -1,0 +1,85 @@
+name: Terraform Workflow
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  TF_VAR_gitlab_token: ${{ secrets.GITLAB_ACCESS_TOKEN }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.MY_AWS_KEY }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.MY_AWS_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: "ap-south-1"
+
+jobs:
+  validate:
+    name: Validate Terraform
+    runs-on: self-hosted
+    labels: [eks_selfhost]
+    container:
+      image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
+      options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Terraform Version
+        run: terraform --version
+
+      - name: Terraform Init
+        run: terraform init -backend-config="tfstate.config"
+
+      - name: Terraform Validate
+        run: terraform validate
+
+  plan:
+    name: Plan Terraform
+    runs-on: self-hosted
+    labels: [eks_selfhost]
+    container:
+      image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
+      options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    needs: validate
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Terraform Plan
+        run: terraform plan -out="planfile"
+
+      - name: Upload Planfile
+        uses: actions/upload-artifact@v3
+        with:
+          name: planfile
+          path: planfile
+
+  apply:
+    name: Apply Terraform
+    runs-on: self-hosted
+    labels: [eks_selfhost]
+    container:
+      image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
+      options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    needs: plan
+    steps:
+      - name: Download Planfile
+        uses: actions/download-artifact@v3
+        with:
+          name: planfile
+
+      - name: Terraform Apply
+        run: terraform apply -input=false planfile
+        if: ${{ github.event.inputs.manual == 'true' }}
+
+  destroy:
+    name: Destroy Terraform
+    runs-on: self-hosted
+    labels: [eks_selfhost]
+    container:
+      image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
+      options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    steps:
+      - name: Terraform Destroy
+        run: terraform destroy --auto-approve
+        if: ${{ github.event.inputs.manual == 'true' }}
