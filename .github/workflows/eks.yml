@@ -16,7 +16,7 @@ jobs:
   validate:
     name: Validate Terraform
     runs-on: self-hosted
-    labels: [self-hosted, Linux, X64]
+    labels: self-hosted, Linux, X64
     container:
       image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
       options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
