@@ -1,29 +1,27 @@
 name: Create EKS Cluster
 
 on:
-  push:  # Automatically run on pushes to the main branch
+  push:
     branches:
       - main
-  workflow_dispatch:  # Manual trigger for the whole workflow
+  workflow_dispatch:
 
 env:
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }} 
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_REGION: "ap-south-1"
   TERRAFORM_VERSION: "1.5.7"
-  TERRAFORM_WORKING_DIR: "POC_EKS"
 
 jobs:
   create-eks:
     runs-on: self-hosted
-    environment: main  # Reference the specific environment where secrets are stored
+    environment: main
 
     steps:
       # Step 1: Checkout the code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-
-      # Step 3: Configure AWS Credentials
+      # Step 2: Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -31,36 +29,48 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Step 4: Setup Terraform
+      # Step 3: Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
-      # Step 5: Terraform Init
+      # Step 4: Terraform Init
       - name: Terraform Init
         run: terraform init
-        working-directory: ${{ env.TERRAFORM_WORKING_DIR }}
 
-      # Step 6: Terraform Validate
+      # Step 5: Terraform Validate
       - name: Terraform Validate
         run: terraform validate
-        working-directory: ${{ env.TERRAFORM_WORKING_DIR }}
 
-        #Step 7: Terraform Plan
+      # Step 6: Terraform Plan
       - name: Terraform Plan
         run: terraform plan -out=tfplan
-        working-directory: ${{ env.TERRAFORM_WORKING_DIR }}
 
-      # Step 8: Terraform Apply 
+      # Step 7: Terraform Apply
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
-        working-directory: ${{ env.TERRAFORM_WORKING_DIR }}
-       # if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'  # Run on manual trigger or main branch push
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
 
-       # Step 9: Terraform Distroy 
-      #- name: terraform destroy
-        #run:  terraform destroy -auto-approve
+#   destroy-eks:  # Commented out for now
+#     runs-on: self-hosted
+#     needs: create-eks
+#     environment: main
 
-       # working-directory: ${{ env.TERRAFORM_WORKING_DIR }}
-       # if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'  # Run on manual trigger or main branch push
+#     steps:
+#       # Step 1: Checkout the code
+#       - name: Checkout Code
+#         uses: actions/checkout@v3
+
+#       # Step 2: Configure AWS Credentials
+#       - name: Configure AWS Credentials
+#         uses: aws-actions/configure-aws-credentials@v2
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: ${{ env.AWS_REGION }}
+
+#       # Step 3: Terraform Destroy
+#       - name: Terraform Destroy
+#         run: terraform destroy -auto-approve
+#         if: github.event_name == 'workflow_dispatch'
