@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual triggering of the entire workflow
 
 env:
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
@@ -52,10 +52,11 @@ jobs:
         run: terraform apply -auto-approve tfplan
         if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
 
-  destroy-eks:  # Uncommented
+  destroy-eks:
     runs-on: self-hosted
     needs: create-eks
     environment: main
+    if: github.event_name == 'workflow_dispatch'  # Ensures this job runs only if manually triggered
 
     steps:
       # Step 1: Checkout the code
@@ -73,4 +74,4 @@ jobs:
       # Step 3: Terraform Destroy
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch'  # Ensures it only runs when triggered manually
