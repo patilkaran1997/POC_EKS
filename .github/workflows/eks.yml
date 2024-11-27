@@ -52,25 +52,25 @@ jobs:
         run: terraform apply -auto-approve tfplan
         if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
 
-#   destroy-eks:  # Commented out for now
-#     runs-on: self-hosted
-#     needs: create-eks
-#     environment: main
+  destroy-eks:  # Uncommented
+    runs-on: self-hosted
+    needs: create-eks
+    environment: main
 
-#     steps:
-#       # Step 1: Checkout the code
-#       - name: Checkout Code
-#         uses: actions/checkout@v3
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-#       # Step 2: Configure AWS Credentials
-#       - name: Configure AWS Credentials
-#         uses: aws-actions/configure-aws-credentials@v2
-#         with:
-#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#           aws-region: ${{ env.AWS_REGION }}
+      # Step 2: Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-#       # Step 3: Terraform Destroy
-#       - name: Terraform Destroy
-#         run: terraform destroy -auto-approve
-#         if: github.event_name == 'workflow_dispatch'
+      # Step 3: Terraform Destroy
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+        if: github.event_name == 'workflow_dispatch'
