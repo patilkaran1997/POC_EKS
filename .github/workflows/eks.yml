@@ -10,13 +10,12 @@ env:
   TF_VAR_gitlab_token: ${{ secrets.GITLAB_ACCESS_TOKEN }}
   AWS_ACCESS_KEY_ID: ${{ secrets.MY_AWS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.MY_AWS_ACCESS_KEY }}
-  AWS_DEFAULT_REGION: "us-east-1"
+  AWS_DEFAULT_REGION: "ap-south-1"
 
 jobs:
   validate:
     name: Validate Terraform
-    runs-on: self-hosted
-    labels: self-hosted, Linux, X64
+    runs-on: [self-hosted, Linux, X64]
     container:
       image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
       options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -35,8 +34,7 @@ jobs:
 
   plan:
     name: Plan Terraform
-    runs-on: self-hosted
-    labels: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64]
     container:
       image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
       options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -56,8 +54,7 @@ jobs:
 
   apply:
     name: Apply Terraform
-    runs-on: self-hosted
-    labels: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64]
     container:
       image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
       options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -74,8 +71,7 @@ jobs:
 
   destroy:
     name: Destroy Terraform
-    runs-on: self-hosted
-    labels: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64]
     container:
       image: registry.gitlab.com/gitlab-org/gitlab-build-images:terraform
       options: --entrypoint "/usr/bin/env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
