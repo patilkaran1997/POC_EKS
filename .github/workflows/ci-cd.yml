@@ -1,4 +1,4 @@
-name: Build and Deploy to Kubernetes with ECR
+name: CI/CD for Simple App with ECR
 
 on:
   push:
@@ -7,69 +7,54 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest  # Use the Ubuntu GitHub-hosted runner
+    runs-on: ubuntu-latest
 
     env:
-      FRONTEND_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend-repo
-      BACKEND_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/backend-repo
-      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
-      HELM_KUBE_NAMESPACE: default
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      IMAGE_NAME: simple-app
+      IMAGE_TAG: latest
+      EKS_CLUSTER_NAME: your-eks-cluster-name
+      AWS_REGION: ap-south-1
 
     steps:
-    # Step 1: Checkout repository
-    - name: Checkout repository
-      uses: actions/checkout@v2
+    # Step 1: Checkout the code
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-    # Step 2: Set up AWS CLI
-    - name: Set up AWS CLI
-      uses: aws-actions/configure-aws-credentials@v1
+    # Step 2: Configure AWS credentials
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v3
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        aws-region: $AWS_REGION
 
-    # Step 3: Create ECR repositories if they don't exist
-    - name: Create ECR repositories if they don't exist
-      run: |
-        aws ecr describe-repositories --repository-names frontend-repo || aws ecr create-repository --repository-name frontend-repo --region ${{ secrets.AWS_REGION }}
-        aws ecr describe-repositories --repository-names backend-repo || aws ecr create-repository --repository-name backend-repo --region ${{ secrets.AWS_REGION }}
-
-    # Step 4: Log in to Amazon ECR
+    # Step 3: Log in to Amazon ECR
     - name: Log in to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    # Step 4: Build and Push Docker Image to ECR
+    - name: Build and push Docker image
       run: |
-        aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+        REPOSITORY_URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --region $AWS_REGION --query "repositories[0].repositoryUri" --output text)
+        docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+        docker push $REPOSITORY_URI:$IMAGE_TAG
 
-    # Step 5: Build and push Frontend Docker image
-    - name: Build and push Frontend Docker image
-      uses: docker/build-push-action@v3
-      with:
-        context: ./Frontend  # Build context for frontend (directory where Dockerfile is located)
-        file: ./Frontend/Dockerfile  # Path to the Dockerfile for frontend
-        push: true
-        tags: ${{ env.FRONTEND_IMAGE_NAME }}:latest
-
-    # Step 6: Build and push Backend Docker image
-    - name: Build and push Backend Docker image
-      uses: docker/build-push-action@v3
-      with:
-        context: ./backend  # Build context for backend (adjust if needed)
-        file: ./backend/Dockerfile  # Path to the Dockerfile for backend
-        push: true
-        tags: ${{ env.BACKEND_IMAGE_NAME }}:latest
-
-    # Step 7: Set up Kubernetes Kubeconfig
-    - name: Set up Kubeconfig
+    # Step 5: Set up kubectl and connect to EKS
+    - name: Set up kubectl
       run: |
-        mkdir -p ~/.kube
-        echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+        aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
 
-    # Step 8: Install Helm
-    - name: Set up Helm
-      uses: azure/setup-helm@v1
-
-    # Step 9: Deploy to Kubernetes using Helm
-    - name: Deploy to Kubernetes using Helm
+    # Step 6: Install Helm
+    - name: Install Helm
       run: |
-        helm upgrade --install my-frontend ./charts/frontend --namespace $HELM_KUBE_NAMESPACE --values ./charts/frontend/values.yaml --set image.repository=${{ env.FRONTEND_IMAGE_NAME }} --set image.tag=latest
-        helm upgrade --install my-backend ./charts/backend --namespace $HELM_KUBE_NAMESPACE --values ./charts/backend/values.yaml --set image.repository=${{ env.BACKEND_IMAGE_NAME }} --set image.tag=latest
+        curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+
+    # Step 7: Deploy the application using Helm
+    - name: Deploy with Helm
+      run: |
+        REPOSITORY_URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --region $AWS_REGION --query "repositories[0].repositoryUri" --output text)
+        helm upgrade --install simple-app ./helm-chart \
+          --set image.repository=$REPOSITORY_URI \
+          --set image.tag=$IMAGE_TAG \
+          --set service.type=LoadBalancer
