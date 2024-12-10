@@ -46,8 +46,8 @@ jobs:
     - name: Build and push Frontend Docker image
       uses: docker/build-push-action@v3
       with:
-        context: ./frontend  # Path to the frontend app
-        file: ./frontend/Dockerfile
+        context: ./frontend  # This is correct for your folder structure
+        file: ./frontend/Dockerfile  # Make sure the Dockerfile exists in the frontend directory
         push: true
         tags: ${{ env.FRONTEND_IMAGE_NAME }}:latest
 
