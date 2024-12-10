@@ -7,13 +7,14 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Use the Ubuntu GitHub-hosted runner
 
     env:
       FRONTEND_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend-repo
       BACKEND_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/backend-repo
-      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}  # Store your kube config as a secret
-      HELM_KUBE_NAMESPACE: default  # You can specify a namespace here
+      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+      HELM_KUBE_NAMESPACE: default
+      AWS_REGION: ${{ secrets.AWS_REGION }}
 
     steps:
     # Step 1: Checkout repository
@@ -28,13 +29,10 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
 
-    # Step 3: Create ECR Repositories if they don't exist
+    # Step 3: Create ECR repositories if they don't exist
     - name: Create ECR repositories if they don't exist
       run: |
-        # Check if frontend repo exists, if not create it
         aws ecr describe-repositories --repository-names frontend-repo || aws ecr create-repository --repository-name frontend-repo --region ${{ secrets.AWS_REGION }}
-
-        # Check if backend repo exists, if not create it
         aws ecr describe-repositories --repository-names backend-repo || aws ecr create-repository --repository-name backend-repo --region ${{ secrets.AWS_REGION }}
 
     # Step 4: Log in to Amazon ECR
@@ -42,21 +40,21 @@ jobs:
       run: |
         aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-    # Step 5: Build and push Frontend Docker image to ECR
+    # Step 5: Build and push Frontend Docker image
     - name: Build and push Frontend Docker image
       uses: docker/build-push-action@v3
       with:
-        context: ./Frontend  # This is correct for your folder structure
-        file: ./Frontend/Dockerfile  # Make sure the Dockerfile exists in the frontend directory
+        context: ./frontend  # Build context for frontend (directory where Dockerfile is located)
+        file: ./frontend/Dockerfile  # Path to the Dockerfile for frontend
         push: true
         tags: ${{ env.FRONTEND_IMAGE_NAME }}:latest
 
-    # Step 6: Build and push Backend Docker image to ECR
+    # Step 6: Build and push Backend Docker image
     - name: Build and push Backend Docker image
       uses: docker/build-push-action@v3
       with:
-        context: ./Backend  # Path to the backend app
-        file: ./Backend/Dockerfile
+        context: ./backend  # Build context for backend (adjust if needed)
+        file: ./backend/Dockerfile  # Path to the Dockerfile for backend
         push: true
         tags: ${{ env.BACKEND_IMAGE_NAME }}:latest
 
@@ -70,7 +68,7 @@ jobs:
     - name: Set up Helm
       uses: azure/setup-helm@v1
 
-    # Step 9: Deploy to Kubernetes using Helm (for both frontend and backend)
+    # Step 9: Deploy to Kubernetes using Helm
     - name: Deploy to Kubernetes using Helm
       run: |
         helm upgrade --install my-frontend ./charts/frontend --namespace $HELM_KUBE_NAMESPACE --values ./charts/frontend/values.yaml --set image.repository=${{ env.FRONTEND_IMAGE_NAME }} --set image.tag=latest
