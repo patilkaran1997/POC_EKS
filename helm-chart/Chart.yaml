@@ -1,5 +1,5 @@
 apiVersion: v2
 name: simple-app
-description: A Helm chart for deploying the Simple App
+description: A Helm chart for deploying the Simple App with ECR
 version: 1.0.0
 appVersion: "1.0.0"
