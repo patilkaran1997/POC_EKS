@@ -33,19 +33,34 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # Step 4: Build and Push Docker Image to ECR
+    # Step 4: Create ECR repository if it doesn't exist
+    - name: Create ECR repository if it doesn't exist
+      run: |
+        aws ecr describe-repositories --repository-names $IMAGE_NAME --region ${{ env.AWS_REGION }} || \
+        aws ecr create-repository --repository-name $IMAGE_NAME --region ${{ env.AWS_REGION }}
+
+    # Step 5: Build and Push Docker Image to ECR
     - name: Build and push Docker image
       run: |
         REPOSITORY_URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --region ${{ env.AWS_REGION }} --query "repositories[0].repositoryUri" --output text)
         docker build -t $REPOSITORY_URI:$IMAGE_TAG .
         docker push $REPOSITORY_URI:$IMAGE_TAG
 
-    # Step 5: Set up kubectl and connect to EKS
+    # Step 6: Set up kubectl and connect to EKS
     - name: Set up kubectl
       run: |
         aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name $EKS_CLUSTER_NAME
 
-    # Step 6: Install Helm
+    # Step 7: Install Helm
     - name: Install Helm
       run: |
-        curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 |
+        curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+
+    # Step 8: Deploy the application using Helm
+    - name: Deploy with Helm
+      run: |
+        REPOSITORY_URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --region ${{ env.AWS_REGION }} --query "repositories[0].repositoryUri" --output text)
+        helm upgrade --install simple-app ./helm-chart \
+          --set image.repository=$REPOSITORY_URI \
+          --set image.tag=$IMAGE_TAG \
+          --set service.type=LoadBalancer
