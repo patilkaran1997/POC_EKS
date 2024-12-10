@@ -1,0 +1,77 @@
+name: Build and Deploy to Kubernetes with ECR
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      FRONTEND_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend-repo
+      BACKEND_IMAGE_NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/backend-repo
+      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}  # Store your kube config as a secret
+      HELM_KUBE_NAMESPACE: default  # You can specify a namespace here
+
+    steps:
+    # Step 1: Checkout repository
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Step 2: Set up AWS CLI
+    - name: Set up AWS CLI
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    # Step 3: Create ECR Repositories if they don't exist
+    - name: Create ECR repositories if they don't exist
+      run: |
+        # Check if frontend repo exists, if not create it
+        aws ecr describe-repositories --repository-names frontend-repo || aws ecr create-repository --repository-name frontend-repo --region ${{ secrets.AWS_REGION }}
+
+        # Check if backend repo exists, if not create it
+        aws ecr describe-repositories --repository-names backend-repo || aws ecr create-repository --repository-name backend-repo --region ${{ secrets.AWS_REGION }}
+
+    # Step 4: Log in to Amazon ECR
+    - name: Log in to Amazon ECR
+      run: |
+        aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+    # Step 5: Build and push Frontend Docker image to ECR
+    - name: Build and push Frontend Docker image
+      uses: docker/build-push-action@v3
+      with:
+        context: ./frontend  # Path to the frontend app
+        file: ./frontend/Dockerfile
+        push: true
+        tags: ${{ env.FRONTEND_IMAGE_NAME }}:latest
+
+    # Step 6: Build and push Backend Docker image to ECR
+    - name: Build and push Backend Docker image
+      uses: docker/build-push-action@v3
+      with:
+        context: ./backend  # Path to the backend app
+        file: ./backend/Dockerfile
+        push: true
+        tags: ${{ env.BACKEND_IMAGE_NAME }}:latest
+
+    # Step 7: Set up Kubernetes Kubeconfig
+    - name: Set up Kubeconfig
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+
+    # Step 8: Install Helm
+    - name: Set up Helm
+      uses: azure/setup-helm@v1
+
+    # Step 9: Deploy to Kubernetes using Helm (for both frontend and backend)
+    - name: Deploy to Kubernetes using Helm
+      run: |
+        helm upgrade --install my-frontend ./charts/frontend --namespace $HELM_KUBE_NAMESPACE --values ./charts/frontend/values.yaml --set image.repository=${{ env.FRONTEND_IMAGE_NAME }} --set image.tag=latest
+        helm upgrade --install my-backend ./charts/backend --namespace $HELM_KUBE_NAMESPACE --values ./charts/backend/values.yaml --set image.repository=${{ env.BACKEND_IMAGE_NAME }} --set image.tag=latest
