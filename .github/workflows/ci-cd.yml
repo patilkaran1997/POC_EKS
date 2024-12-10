@@ -44,8 +44,8 @@ jobs:
     - name: Build and push Frontend Docker image
       uses: docker/build-push-action@v3
       with:
-        context: ./frontend  # Build context for frontend (directory where Dockerfile is located)
-        file: ./frontend/Dockerfile  # Path to the Dockerfile for frontend
+        context: ./Frontend  # Build context for frontend (directory where Dockerfile is located)
+        file: ./Frontend/Dockerfile  # Path to the Dockerfile for frontend
         push: true
         tags: ${{ env.FRONTEND_IMAGE_NAME }}:latest
 
