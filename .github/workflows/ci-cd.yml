@@ -17,50 +17,50 @@ jobs:
 
     steps:
     # Step 1: Checkout the code
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
     # Step 2: Configure AWS credentials
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v3
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
     # Step 3: Log in to Amazon ECR
-    - name: Log in to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
     # Step 4: Create ECR repository if it doesn't exist
-    - name: Create ECR repository if it doesn't exist
-      run: |
-        aws ecr describe-repositories --repository-names $IMAGE_NAME --region ${{ env.AWS_REGION }} || \
-        aws ecr create-repository --repository-name $IMAGE_NAME --region ${{ env.AWS_REGION }}
+      - name: Create ECR repository if it doesn't exist
+        run: |
+          aws ecr describe-repositories --repository-names $IMAGE_NAME --region ${{ env.AWS_REGION }} || \
+          aws ecr create-repository --repository-name $IMAGE_NAME --region ${{ env.AWS_REGION }}
 
     # Step 5: Build and Push Docker Image to ECR
-    - name: Build and push Docker image
-      run: |
-        REPOSITORY_URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --region ${{ env.AWS_REGION }} --query "repositories[0].repositoryUri" --output text)
-        docker build -t $REPOSITORY_URI:$IMAGE_TAG .
-        docker push $REPOSITORY_URI:$IMAGE_TAG
+      - name: Build and push Docker image
+        run: |
+          REPOSITORY_URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --region ${{ env.AWS_REGION }} --query "repositories[0].repositoryUri" --output text)
+          docker build -f poc-app/Dockerfile -t $REPOSITORY_URI:$IMAGE_TAG ./poc-app
+          docker push $REPOSITORY_URI:$IMAGE_TAG
 
     # Step 6: Set up kubectl and connect to EKS
-    - name: Set up kubectl
-      run: |
-        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name $EKS_CLUSTER_NAME
+      - name: Set up kubectl
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name $EKS_CLUSTER_NAME
 
     # Step 7: Install Helm
-    - name: Install Helm
-      run: |
-        curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 
     # Step 8: Deploy the application using Helm
-    - name: Deploy with Helm
-      run: |
-        REPOSITORY_URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --region ${{ env.AWS_REGION }} --query "repositories[0].repositoryUri" --output text)
-        helm upgrade --install simple-app ./helm-chart \
-          --set image.repository=$REPOSITORY_URI \
-          --set image.tag=$IMAGE_TAG \
-          --set service.type=LoadBalancer
+      - name: Deploy with Helm
+        run: |
+          REPOSITORY_URI=$(aws ecr describe-repositories --repository-names $IMAGE_NAME --region ${{ env.AWS_REGION }} --query "repositories[0].repositoryUri" --output text)
+          helm upgrade --install simple-app ./helm-chart \
+            --set image.repository=$REPOSITORY_URI \
+            --set image.tag=$IMAGE_TAG \
+            --set service.type=LoadBalancer
