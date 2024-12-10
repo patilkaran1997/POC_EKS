@@ -1,27 +1,32 @@
-# Use the official Node.js image as the base image
+# Step 1: Set the base image
 FROM node:16 AS build
 
-# Set the working directory inside the container
+# Set the working directory in the container
 WORKDIR /app
 
-# Copy package.json and package-lock.json (if it exists) for npm install
+# Copy the package.json and package-lock.json files to the container
 COPY frontend/package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy the rest of the application code from your frontend/src/ directory to the container
-COPY Frontend/src/ ./src
-COPY ../public
+# Copy the source code from your frontend/src/ directory to the container
+COPY frontend/src/ ./src/
+
+# Copy the public directory from frontend to the container
+COPY frontend/public/ ./public/
 
 # Run the build command to generate the production build
 RUN npm run build
 
-# Install a static server to serve the build (optional, based on how you serve the app)
-RUN npm install -g serve
+# Set the final image and serve the built application (optional)
+FROM nginx:alpine
 
-# Expose the port (usually 3000 for React apps)
-EXPOSE 3000
+# Copy the build folder to nginx's public directory
+COPY --from=build /app/build /usr/share/nginx/html
 
-# Serve the build folder using the 'serve' package
-CMD ["serve", "-s", "build", "-l", "3000"]
+# Expose the port the app will run on
+EXPOSE 80
+
+# Start the nginx server
+CMD ["nginx", "-g", "daemon off;"]
