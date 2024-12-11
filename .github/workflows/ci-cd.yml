@@ -12,7 +12,7 @@ jobs:
     env:
       IMAGE_NAME: simple-app
       IMAGE_TAG: latest
-      EKS_CLUSTER_NAME: your-eks-cluster-name
+      EKS_CLUSTER_NAME: demo
       AWS_REGION: ap-south-1
 
     steps:
