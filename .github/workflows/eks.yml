@@ -49,7 +49,7 @@ jobs:
         run: terraform apply -auto-approve tfplan
         if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
 
-      # Step 8: Terraform Destroy (commented out)
-      # - name: Terraform Destroy
-      #   run: terraform destroy -auto-approve
-      #   if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+        #Step 8: Terraform Destroy (commented out)
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
